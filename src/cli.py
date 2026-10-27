@@ -59,6 +59,9 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("-s", "--settings", help="settings JSON (default: <project>_export_settings.json if present)")
     p.add_argument("--delete-renders", action="store_true",
                    help="remove the render PNGs once the combined PDF is written")
+    p.add_argument("--no-fab-copy", action="store_true",
+                   help="keep fabrication files only in production/ next to the board, "
+                   "don't copy them to <output>/production")
     p.add_argument("--keep-going", action="store_true", help="run the remaining targets after a failure")
     return p
 
@@ -97,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
 
         job = make_step_job_by_name(
             step_name, settings, project, output_dir, on_event,
-            delete_renders=args.delete_renders, copy_fab_to_output=True,
+            delete_renders=args.delete_renders, copy_fab_to_output=not args.no_fab_copy,
         )
         try:
             job.run()

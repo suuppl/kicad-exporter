@@ -25,7 +25,8 @@ uv run main.py hw/board.kicad_pro -t all --keep-going
 
 Targets: `renders`, `schematic`, `layout`, `step`, `fab`, `combined`, `all`. Fabrication
 files are written to `production/` next to the board (as the plugin does) and copied to
-`<output>/production/`. The exit code is non-zero if any target fails.
+`<output>/production/` (`--no-fab-copy` skips the copy, e.g. when the output folder is
+committed next to `production/`). The exit code is non-zero if any target fails.
 
 ## Docker / CI
 
