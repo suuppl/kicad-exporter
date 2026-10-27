@@ -1,0 +1,33 @@
+# Example: export a KiCad project in CI with the kicad-exporter image.
+# Copy to .github/workflows/kicad-export.yml in the project repository and adjust
+# PROJECT. Settings come from <name>_export_settings.json next to the .kicad_pro
+# (written by the GUI's "Project settings → Export…"), else defaults.
+name: KiCad export
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  PROJECT: hw/board.kicad_pro
+  IMAGE: ghcr.io/suuppl/kicad-exporter:latest
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Run as the runner's uid so the outputs belong to it (the image falls back to
+      # a temporary HOME for KiCad's config).
+      - name: Export
+        run: |
+          docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/work" "$IMAGE" \
+            "$PROJECT" -t all -o export
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kicad-export
+          path: export/

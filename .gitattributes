@@ -1,0 +1,3 @@
+# Executed inside the Linux container; CRLF would break the shebang.
+docker/kicad-export text eol=lf
+Dockerfile text eol=lf

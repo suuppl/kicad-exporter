@@ -1,0 +1,22 @@
+[project]
+name = "kicad-exporter"
+version = "0.1.0"
+description = "GUI and headless CLI for kicad-cli export workflows"
+readme = "README.md"
+license = "MIT"
+# 3.11: the Docker image runs on KiCad's own Python (Debian 12), which provides pcbnew.
+requires-python = ">=3.11"
+dependencies = [
+    "fpdf2>=2.8.9",
+    "pillow>=11.0.0",
+    "pypdf>=6.13.2",
+]
+
+[dependency-groups]
+# Only the desktop GUI needs wxPython; the CLI / Docker image runs without it.
+gui = [
+    "wxpython>=4.2",
+]
+
+[tool.uv]
+default-groups = ["gui"]

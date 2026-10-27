@@ -1,0 +1,18 @@
+#!/bin/sh
+# Entry point of the kicad-exporter image: runs the headless CLI (src/cli.py).
+set -e
+
+# KiCad writes its config under $HOME. When CI runs the container as another uid
+# (e.g. --user "$(id -u):$(id -g)" to keep workspace ownership), /home/kicad isn't
+# writable, so fall back to a temporary home.
+if ! [ -w "${HOME:-/nonexistent}" ]; then
+    HOME="$(mktemp -d)"
+    export HOME
+fi
+
+exec /opt/venv/bin/python -c '
+import sys
+sys.path.insert(0, "/opt/kicad-exporter")
+from src.cli import main
+sys.exit(main())
+' "$@"

@@ -1,0 +1,5 @@
+*
+!main.py
+!src/
+!docker/
+src/**/__pycache__
