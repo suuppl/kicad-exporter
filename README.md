@@ -43,19 +43,13 @@ Mount the repository root, not just the project folder, so libraries referenced 
 runner user.
 
 `.github/workflows/docker-image.yml` publishes the image to
-[`ghcr.io/id-photonics-gmbh/kicad-exporter`](https://github.com/orgs/ID-Photonics-GmbH/packages/container/package/kicad-exporter)
+[`ghcr.io/suuppl/kicad-exporter`](https://github.com/suuppl/kicad-exporter/pkgs/container/kicad-exporter)
 on pushes to `main` and `v*` tags. `docker/example-workflow.yml` is a ready-to-copy
-workflow for a project repository.
-
-The image is private. To pull it locally, log in with a token that has `read:packages`:
+workflow for a project repository:
 
 ```bash
-echo "$TOKEN" | docker login ghcr.io -u <github-user> --password-stdin
-docker pull ghcr.io/id-photonics-gmbh/kicad-exporter:latest
+docker pull ghcr.io/suuppl/kicad-exporter:latest
 ```
-
-For a project repository's workflow to pull it, grant that repository read access under
-the package's *Package settings → Manage Actions access*.
 
 To update KiCad or a plugin, change `KICAD_IMAGE` or the `ADD --checksum` lines in the
 `Dockerfile` (URLs and hashes are in `https://gitlab.com/kicad/addons/repository/-/raw/main/packages-v1.json`).
