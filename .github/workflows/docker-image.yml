@@ -1,5 +1,6 @@
 # Build the kicad-exporter image and publish it to GHCR
-# (ghcr.io/<owner>/kicad-exporter). Pull requests build without pushing.
+# (ghcr.io/<owner>/kicad-exporter, i.e. ghcr.io/id-photonics-gmbh/kicad-exporter).
+# Pull requests build without pushing.
 name: Docker image
 
 on:

@@ -12,13 +12,25 @@ on:
 
 env:
   PROJECT: hw/board.kicad_pro
-  IMAGE: ghcr.io/suuppl/kicad-exporter:latest
+  IMAGE: ghcr.io/id-photonics-gmbh/kicad-exporter:latest
+
+# The image is private: the repository needs read access under the package's
+# "Manage Actions access" settings.
+permissions:
+  contents: read
+  packages: read
 
 jobs:
   export:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # Run as the runner's uid so the outputs belong to it (the image falls back to
       # a temporary HOME for KiCad's config).
