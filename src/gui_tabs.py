@@ -135,7 +135,7 @@ class PcbTab(wx.Panel):
         self.bare_check.SetBackgroundColour(c.card_bg)
         self.bare_check.SetToolTip(
             "Render each selected side a second time with all component 3D models removed "
-            "(saved as <name>_<side>_bare.png)."
+            "(saved as <name>-<side>-bare.png)."
         )
         cs.Add(self.bare_check, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
@@ -785,7 +785,7 @@ class BulkExportTab(wx.Panel):
             check_sizer.Add(chk, 0)
         self.combined_check.SetToolTip(
             "Merge title page (board title + corner render), PCB images, schematic PDF and "
-            "layout PDF from the output folder into <name>_combined.pdf. Runs last."
+            "layout PDF from the output folder into <name>-combined.pdf. Runs last."
         )
         sel_sizer.Add(check_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
@@ -794,7 +794,7 @@ class BulkExportTab(wx.Panel):
         self.delete_renders_check.SetForegroundColour(c.text_secondary)
         self.delete_renders_check.SetBackgroundColour(c.card_bg)
         self.delete_renders_check.SetToolTip(
-            "Remove the PCB render PNGs from the output folder once <name>_combined.pdf "
+            "Remove the PCB render PNGs from the output folder once <name>-combined.pdf "
             "has been written. Only available with Combined PDF selected."
         )
         sel_sizer.Add(self.delete_renders_check, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)

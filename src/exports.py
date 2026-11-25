@@ -34,6 +34,17 @@ FAB_PKG = "com_github_bennymeg_JLC-Plugin-for-KiCad"
 STEP_NAMES = ["PCB Images", "Schematic", "Layout", "STEP", "Fabrication", "Combined PDF"]
 
 
+def export_name(project: str) -> str:
+    """Base name of the exported files: '<rev>-<project>' when the title
+    block has a revision (text variables expanded, e.g. '1614-1688'), like the
+    Fabrication Toolkit names its production files. Normalised the same way
+    (whitespace -> '_', anything but word characters, '.' and '-' stripped)."""
+    name = os.path.splitext(os.path.basename(project))[0]
+    rev = read_title_block(project).get("rev", "").strip()
+    rev = re.sub(r"[^\w.\-]", "", "_".join(rev.split()))
+    return f"{rev}-{name}" if rev else name
+
+
 def side_file_tag(side_key: str) -> str:
     """File name tag for a render side; the corner pseudo-side is saved as 'corner'."""
     return "corner" if side_key == "top-left-front" else side_key
@@ -149,7 +160,7 @@ def make_pcb_job(s: AppSettings, project: str, output_dir: str, on_event: OnEven
 
     base = os.path.splitext(project)[0]
     pcb = base + ".kicad_pcb"
-    name = os.path.basename(base)
+    name = export_name(project)
 
     # (board file, output-name suffix) per render pass. The bare pass renders a
     # temp copy of the board with all (model ...) blocks stripped.
@@ -160,13 +171,13 @@ def make_pcb_job(s: AppSettings, project: str, output_dir: str, on_event: OnEven
             bare_dir, bare_pcb = make_bare_board_copy(project)
         except OSError as exc:
             return _failed_job(f"Could not prepare board without components: {exc}", on_event)
-        passes.append((bare_pcb, "_bare"))
+        passes.append((bare_pcb, "-bare"))
 
     steps: list[ExportStep] = []
     for (board, suffix), side_key in ((p, k) for p in passes for k in sides):
         is_corner = side_key == "top-left-front"
         actual_side = "top" if is_corner else side_key
-        out_name = f"{name}_{side_file_tag(side_key)}{suffix}.png"
+        out_name = f"{name}-{side_file_tag(side_key)}{suffix}.png"
 
         opts = RenderOptions(
             board=board,
@@ -213,8 +224,8 @@ def make_combined_job(
     files written by earlier steps of the same bulk export.
     """
     log = lambda line: on_event(("line", line))  # noqa: E731
-    name = os.path.splitext(os.path.basename(project))[0]
-    out_pdf = os.path.join(output_dir, f"{name}_combined.pdf")
+    name = export_name(project)
+    out_pdf = os.path.join(output_dir, f"{name}-combined.pdf")
 
     def run() -> None:
         content = collect_combined_content(project, output_dir, log)
@@ -224,15 +235,15 @@ def make_combined_job(
 
 
 def collect_combined_content(project: str, output_dir: str, log: Callable[[str], None]) -> CombinedPdfContent:
-    name = os.path.splitext(os.path.basename(project))[0]
+    name = export_name(project)
 
     def out(fname: str) -> str:
         return os.path.join(output_dir, fname)
 
     image_groups: list[tuple[str, list[tuple[str, str]]]] = []
-    for suffix, heading in (("", "3D renders"), ("_bare", "3D renders without components")):
+    for suffix, heading in (("", "3D renders"), ("-bare", "3D renders without components")):
         items = [
-            (SIDE_LABELS[key], out(f"{name}_{side_file_tag(key)}{suffix}.png"))
+            (SIDE_LABELS[key], out(f"{name}-{side_file_tag(key)}{suffix}.png"))
             for key in SIDE_KEYS
         ]
         items = [(caption, path) for caption, path in items if os.path.isfile(path)]
@@ -240,15 +251,15 @@ def collect_combined_content(project: str, output_dir: str, log: Callable[[str],
             image_groups.append((heading, items))
 
     cover = next(
-        (p for p in (out(f"{name}_corner.png"), out(f"{name}_corner_bare.png")) if os.path.isfile(p)),
+        (p for p in (out(f"{name}-corner.png"), out(f"{name}-corner-bare.png")) if os.path.isfile(p)),
         None,
     )
 
     pdfs: list[tuple[str, str]] = []
     for label, fname in (
-        ("Schematics", f"{name}_schematics.pdf"),
-        ("Layout", f"{name}_assembly.pdf"),
-        ("Layout", f"{name}_board_layers.pdf"),
+        ("Schematics", f"{name}-schematics.pdf"),
+        ("Layout", f"{name}-assembly.pdf"),
+        ("Layout", f"{name}-board-layers.pdf"),
     ):
         if os.path.isfile(out(fname)):
             pdfs.append((label, out(fname)))
@@ -267,7 +278,7 @@ def collect_combined_content(project: str, output_dir: str, log: Callable[[str],
     if not pdfs:
         log("Note: no schematic or layout PDF found in the output folder.")
     return CombinedPdfContent(
-        title=tb.get("title") or name,
+        title=tb.get("title") or os.path.splitext(os.path.basename(project))[0],
         subtitle_lines=subtitle,
         cover_image=cover,
         image_groups=image_groups,
@@ -300,8 +311,8 @@ def write_combined_pdf(
 def make_sch_job(s: AppSettings, project: str, output_dir: str, on_event: OnEvent) -> ExportJob:
     base = os.path.splitext(project)[0]
     sch = base + ".kicad_sch"
-    name = os.path.basename(base)
-    out_pdf = os.path.join(output_dir, f"{name}_schematics.pdf")
+    name = export_name(project)
+    out_pdf = os.path.join(output_dir, f"{name}-schematics.pdf")
 
     args = ["kicad-cli", "sch", "export", "pdf", "--output", out_pdf]
     if not s.sch_plot_drawing_sheet:
@@ -333,9 +344,9 @@ def make_layout_job(s: AppSettings, project: str, output_dir: str, on_event: OnE
     base = os.path.splitext(project)[0]
     pcb = base + ".kicad_pcb"
     project_dir = os.path.dirname(project)
-    name = os.path.basename(base)
+    name = export_name(project)
     ini_path = os.path.join(project_dir, "board2pdf.config.ini")
-    out_pdf = os.path.abspath(os.path.join(output_dir, f"{name}_assembly.pdf"))
+    out_pdf = os.path.abspath(os.path.join(output_dir, f"{name}-assembly.pdf"))
 
     b2p_path = board2pdf_path(s)
     if not b2p_path:
@@ -366,7 +377,7 @@ def make_layout_job(s: AppSettings, project: str, output_dir: str, on_event: OnE
 def make_step_job(s: AppSettings, project: str, output_dir: str, on_event: OnEvent) -> ExportJob:
     base = os.path.splitext(project)[0]
     pcb = base + ".kicad_pcb"
-    name = os.path.basename(base)
+    name = export_name(project)
 
     fmt = s.step_format
     ext = {"GLB": "glb", "XAO": "xao"}.get(fmt, "step")
@@ -454,7 +465,7 @@ def make_fab_job(
     # (thread.py reads pcbnew.GetBoard(), which is None headless). Instead we
     # let the plugin use its default project-based name and rename the
     # outputs ourselves in rename_fab_outputs once the job succeeds.
-    archive = s.fab_archive_name.strip()
+    archive = s.fab_archive_name.strip() or export_name(project)
     if s.fab_extra_layers.strip():
         argv += ["--additionalLayers", s.fab_extra_layers.strip()]
 
@@ -572,9 +583,9 @@ def rename_fab_outputs(prod_dir: str, archive_name: str, log: Callable[[str], No
         renames = []
 
     renames += [
-        (os.path.join(prod_dir, "designators.csv"), base + "_designators.csv"),
-        (os.path.join(prod_dir, "positions.csv"), base + "_positions.csv"),
-        (os.path.join(prod_dir, "bom.csv"), base + "_bom.csv"),
+        (os.path.join(prod_dir, "designators.csv"), base + "-designators.csv"),
+        (os.path.join(prod_dir, "positions.csv"), base + "-positions.csv"),
+        (os.path.join(prod_dir, "bom.csv"), base + "-bom.csv"),
     ]
     for src, dst_name in renames:
         dst = os.path.join(prod_dir, dst_name)
