@@ -18,7 +18,7 @@ jobs:
   export:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Run as the runner's uid so the outputs belong to it (the image falls back to
       # a temporary HOME for KiCad's config).
@@ -27,7 +27,7 @@ jobs:
           docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/work" "$IMAGE" \
             "$PROJECT" -t all -o export
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: kicad-export
           path: export/
