@@ -374,15 +374,11 @@ def make_layout_job(s: AppSettings, project: str, output_dir: str, on_event: OnE
 # STEP
 # ----------------------------------------------------------------------
 
-def make_step_job(s: AppSettings, project: str, output_dir: str, on_event: OnEvent) -> ExportJob:
-    base = os.path.splitext(project)[0]
-    pcb = base + ".kicad_pcb"
-    name = export_name(project)
-
+def _step_args(s: AppSettings, pcb: str, out_file: str, reduced: bool) -> list[str]:
+    """kicad-cli STEP export arguments. The reduced variant is the light model for
+    mechanical work: board body + fitted components only (no copper, silkscreen,
+    soldermask or net filter), with unfitted parts dropped and vias filled."""
     fmt = s.step_format
-    ext = {"GLB": "glb", "XAO": "xao"}.get(fmt, "step")
-    out_file = os.path.join(output_dir, f"{name}.{ext}")
-
     args = ["kicad-cli", "pcb", "export", "step", "--output", out_file]
 
     if s.step_origin == "drill":
@@ -392,26 +388,27 @@ def make_step_job(s: AppSettings, project: str, output_dir: str, on_event: OnEve
     elif s.step_origin == "user" and s.step_user_origin.strip():
         args += ["--user-origin", s.step_user_origin.strip()]
 
+    full_only = not reduced
     for enabled, flag in (
         (not s.step_export_board_body, "--no-board-body"),
         (not s.step_export_components, "--no-components"),
         (s.step_no_unspecified, "--no-unspecified"),
-        (s.step_no_dnp, "--no-dnp"),
+        (s.step_no_dnp or reduced, "--no-dnp"),
         (s.step_subst_models, "--subst-models"),
         (s.step_force, "--force"),
-        (s.step_include_inner_copper, "--include-inner-copper"),
-        (s.step_include_silkscreen, "--include-silkscreen"),
-        (s.step_include_soldermask, "--include-soldermask"),
-        (s.step_cut_vias, "--cut-vias-in-body"),
-        (s.step_include_tracks, "--include-tracks"),
-        (s.step_include_pads, "--include-pads"),
-        (s.step_include_zones, "--include-zones"),
-        (s.step_fuse_shapes, "--fuse-shapes"),
-        (s.step_fill_all_vias, "--fill-all-vias"),
+        (s.step_include_inner_copper and full_only, "--include-inner-copper"),
+        (s.step_include_silkscreen and full_only, "--include-silkscreen"),
+        (s.step_include_soldermask and full_only, "--include-soldermask"),
+        (s.step_cut_vias and full_only, "--cut-vias-in-body"),
+        (s.step_include_tracks and full_only, "--include-tracks"),
+        (s.step_include_pads and full_only, "--include-pads"),
+        (s.step_include_zones and full_only, "--include-zones"),
+        (s.step_fuse_shapes and full_only, "--fuse-shapes"),
+        (s.step_fill_all_vias or reduced, "--fill-all-vias"),
     ):
         if enabled:
             args.append(flag)
-    if s.step_net_filter.strip():
+    if s.step_net_filter.strip() and full_only:
         args += ["--net-filter", s.step_net_filter.strip()]
     if s.step_component_filter.strip():
         args += ["--component-filter", s.step_component_filter.strip()]
@@ -425,10 +422,23 @@ def make_step_job(s: AppSettings, project: str, output_dir: str, on_event: OnEve
         args += ["--format", fmt]
 
     args.append(pcb)
+    return args
 
-    step = _kicad_step(s, args, progress_weight=0.0)
-    step.output_paths = [out_file]
-    return ExportJob(steps=[step], on_event=on_event)
+
+def make_step_job(s: AppSettings, project: str, output_dir: str, on_event: OnEvent) -> ExportJob:
+    """Full model '<name>.<ext>' plus the reduced one '<name>-reduced.<ext>'."""
+    base = os.path.splitext(project)[0]
+    pcb = base + ".kicad_pcb"
+    name = export_name(project)
+    ext = {"GLB": "glb", "XAO": "xao"}.get(s.step_format, "step")
+
+    steps: list[ExportStep] = []
+    for reduced in (False, True):
+        out_file = os.path.join(output_dir, f"{name}-reduced.{ext}" if reduced else f"{name}.{ext}")
+        step = _kicad_step(s, _step_args(s, pcb, out_file, reduced), progress_weight=0.0)
+        step.output_paths = [out_file]
+        steps.append(step)
+    return ExportJob(steps=steps, on_event=on_event)
 
 
 # ----------------------------------------------------------------------

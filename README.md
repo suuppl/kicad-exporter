@@ -27,6 +27,8 @@ Targets: `renders`, `schematic`, `layout`, `step`, `fab`, `combined`, `all`. Fab
 files are written to `production/` next to the board (as the plugin does) and copied to
 `<output>/production/` (`--no-fab-copy` skips the copy, e.g. when the output folder is
 committed next to `production/`). The exit code is non-zero if any target fails.
+The `step` target also writes `<name>-reduced.step`: board body and fitted components only (no copper,
+silkscreen or soldermask; unfitted parts dropped, vias filled), same origin, for mechanical work.
 
 ## Docker / CI
 
